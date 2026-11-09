@@ -8,7 +8,7 @@ from models.libro_autor import LibroAutor
 from models.socio import Socio
 from models.prestamo import Prestamo
 
-from routers import autor, libro, socio
+from routers import autor, libro, socio, prestamo
 
 
 

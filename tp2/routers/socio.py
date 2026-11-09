@@ -1,8 +1,10 @@
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlmodel import Session, select
 from database import get_session
 
 from models.socio import Socio
+from services import prestamo as prestamo_service
 
 router = APIRouter(prefix="/socios", tags=["Socios"])
 
@@ -60,3 +62,6 @@ def delete_socio(socio_id: int, session: Session = Depends(get_session)):
     session.commit()
     return
 
+@router.get("/{socio_id}/prestamos")
+def get_prestamos_del_socio(socio_id: int, activos: Optional[bool] = None, session: Session = Depends(get_session)):
+    return prestamo_service.listar_prestamos(session, socio_id, activos)
