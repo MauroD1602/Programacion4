@@ -67,7 +67,7 @@ def delete_libro(libro_id: int, session: Session = Depends(get_session)):
     
     session.delete(libro)
     session.commit()
-    return {"detail": "Libro eliminado"}
+    return
 
 @router.post("/{libro_id}/autores/{autor_id}", response_model=Libro)
 def asociar_autor_con_libro(libro_id: int, autor_id: int, session: Session = Depends(get_session)):
@@ -79,10 +79,10 @@ def asociar_autor_con_libro(libro_id: int, autor_id: int, session: Session = Dep
     if not autor:
         raise HTTPException(status_code=404, detail="Autor no encontrado.")
     
-    if autor in libro.autor:
-        raise HTTPException(status_code=400, detail="El autor ya está asociado al libro.")
+    if autor in libro.autores:
+        raise HTTPException(status_code=409, detail="El autor ya está asociado al libro.")
     
-    libro.autor.append(autor)
+    libro.autores.append(autor)
     session.add(libro)
     session.commit()
     session.refresh(libro)

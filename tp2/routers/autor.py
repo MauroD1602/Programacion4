@@ -14,7 +14,7 @@ def create_autor(autor: Autor, session: Session = Depends(get_session)):
     return autor
 
 @router.get("/", response_model=list[Autor])
-def get_autores(autor_id: int, session: Session = Depends(get_session)):
+def get_autores(session: Session = Depends(get_session)):
     return session.exec(select(Autor)).all()
 
 @router.get("/{autor_id}", response_model=Autor)
@@ -46,4 +46,4 @@ def delete_autor(autor_id: int, session: Session = Depends(get_session)):
     
     session.delete(autor_db)
     session.commit()
-    return {"detail": "Autor eliminado"}
+    return

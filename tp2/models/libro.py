@@ -14,5 +14,5 @@ class Libro(SQLModel, table=True):
     stock: int = Field(default=0, ge=0)
     anio: int
 
-    autor: List["Autor"] = Relationship(back_populates="libros", link_model=LibroAutor)   
-    prestamos: List["Prestamo"] = Relationship(back_populates="libro")
+    autores: List["Autor"] = Relationship(back_populates="libros", link_model=LibroAutor)   
+    prestamos: List["Prestamo"] = Relationship(back_populates="libros")
