@@ -11,7 +11,7 @@ class Prestamo(SQLModel, table=True):
     socio_id: int = Field(foreign_key="socio.id")
     libro_id: int = Field(foreign_key="libro.id")
     fecha_prestamo: date
-    fecha_venciemiento: date
+    fecha_vencimiento: date
     fecha_devolucion: Optional[date] = Field(default=None)
     multa: float = 0
 

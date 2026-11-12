@@ -30,7 +30,7 @@ def client(session):
 
 @pytest.fixture
 def socio(client):
-    respuesta = client.post("/socios/", json={"nombre": "Ana", "email": "ana@mail.com"})
+    respuesta = client.post("/socios/", json={"nombre": "Ana", "email": "ana@gmail.com"})
     return respuesta.json()
 
 

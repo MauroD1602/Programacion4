@@ -14,7 +14,7 @@ def crear_prestamo(
 ):
     return prestamo_service.crear_prestamo(session, socio_id, libro_id)
 
-@router.post("/{prestamo_id}/devolver")
+@router.post("/{prestamo_id}/devolucion")
 def devolver_prestamo(
     prestamo_id: int,
     session: Session = Depends(get_session)

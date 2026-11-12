@@ -21,7 +21,7 @@ def crear_prestamo(session: Session, socio_id: int, libro_id: int):
         raise HTTPException(status_code=404, detail="Libro no encontrado.")
 
     if not socio.activo:
-        raise HTTPException(status_code=400, detail="El socio no está activo.")
+        raise HTTPException(status_code=403, detail="El socio no está activo.")
 
     prestamos_activos = session.exec(
         select(Prestamo).where(
@@ -41,7 +41,7 @@ def crear_prestamo(session: Session, socio_id: int, libro_id: int):
         socio_id=socio_id,
         libro_id=libro_id,
         fecha_prestamo=hoy,
-        fecha_venciemiento=hoy + timedelta(days=DIAS_PRESTAMO),
+        fecha_vencimiento=hoy + timedelta(days=DIAS_PRESTAMO),
     )
     libro.stock -= 1
 
@@ -57,10 +57,10 @@ def devolver_prestamo(session: Session, prestamo_id: int):
         raise HTTPException(status_code=404, detail="Prestamo no encontrado.")
 
     if prestamo.fecha_devolucion is not None:
-        raise HTTPException(status_code=400, detail="El prestamo ya fue devuelto.")
+        raise HTTPException(status_code=409, detail="El prestamo ya fue devuelto.")
 
     hoy = date.today()
-    dias_atraso = (hoy - prestamo.fecha_venciemiento).days
+    dias_atraso = (hoy - prestamo.fecha_vencimiento).days
     if dias_atraso < 0:
         dias_atraso = 0
 

@@ -15,4 +15,4 @@ class Libro(SQLModel, table=True):
     anio: int
 
     autores: List["Autor"] = Relationship(back_populates="libros", link_model=LibroAutor)   
-    prestamos: List["Prestamo"] = Relationship(back_populates="libros")
+    prestamos: List["Prestamo"] = Relationship(back_populates="libro")
