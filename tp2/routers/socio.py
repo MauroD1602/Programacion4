@@ -1,67 +1,65 @@
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, status
-from sqlmodel import Session, select
-from database import get_session
+from typing import Optional, Annotated
 
-from models.socio import Socio
-from services import prestamo as prestamo_service
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import HTTPBearer
 
-router = APIRouter(prefix="/socios", tags=["Socios"])
+from dependencies import CurrentUserDep, PrestamoServiceDep, SocioServiceDep, permission_check, tiene_permiso
+from middlewares.protected import protected
+from models.socio import SocioBase
+from schemas.prestamo import PrestamoRespuesta
+from schemas.socio import SocioRespuesta
 
-@router.post("/", response_model=Socio, status_code=status.HTTP_201_CREATED)
-def create_Socio(socio: Socio, session: Session = Depends(get_session)):
+router = APIRouter(prefix="/socios", tags=["Socios"], dependencies=[Depends(HTTPBearer())])
 
-    socio_existente = session.exec(select(Socio).where(Socio.email == socio.email)).first()
-    if socio_existente:
-        raise HTTPException(status_code=409, detail="El email ya está registrado.")
-    
-    session.add(socio)
-    session.commit()
-    session.refresh(socio)
-    return socio
+puede_administrar = Depends(permission_check("administrar_socios"))
 
-@router.get("/", response_model=list[Socio])
-def get_socios(session: Session = Depends(get_session)):
-    socios = session.exec(select(Socio)).all()
-    return socios
 
-@router.get("/{socio_id}", response_model=Socio)
-def get_socio(socio_id: int, session: Session = Depends(get_session)):
-    socio = session.get(Socio, socio_id)
-    if not socio:
-        raise HTTPException(status_code=404, detail="Socio no encontrado.")
-    return socio
+@router.post("", response_model=SocioRespuesta, status_code=status.HTTP_201_CREATED, dependencies=[puede_administrar])
+@protected
+def create_socio(datos: SocioBase, service: SocioServiceDep):
+    return service.create_socio(datos)
 
-@router.put("/{socio_id}", response_model=Socio)
-def update_socio(socio_id: int, socio_data: Socio, session: Session = Depends(get_session)):
-    socio_db = session.get(Socio, socio_id)
-    if not socio_db:
-        raise HTTPException(status_code=404, detail="Socio no encontrado.")
-    
-    if socio_db.email != socio_data.email:
-        email_existente = session.exec(select(Socio).where(Socio.email == socio_data.email)).first()
-        if email_existente:
-            raise HTTPException(status_code=409, detail="El email ya está registrado.")
 
-    socio_db.nombre = socio_data.nombre
-    socio_db.email = socio_data.email
-    socio_db.activo = socio_data.activo
+@router.get("", response_model=list[SocioRespuesta], dependencies=[puede_administrar])
+@protected
+def get_socios(
+    service: SocioServiceDep,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 100,
+):
+    return service.get_socios(offset, limit)
 
-    session.add(socio_db)
-    session.commit()
-    session.refresh(socio_db)
-    return socio_db
 
-@router.delete("/{socio_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_socio(socio_id: int, session: Session = Depends(get_session)):
-    socio = session.get(Socio, socio_id)
-    if not socio:
-        raise HTTPException(status_code=404, detail="Socio no encontrado.")
-    
-    session.delete(socio)
-    session.commit()
-    return
+@router.get("/{socio_id}", response_model=SocioRespuesta, dependencies=[puede_administrar])
+@protected
+def get_socio(socio_id: int, service: SocioServiceDep):
+    return service.get_socio(socio_id)
 
-@router.get("/{socio_id}/prestamos")
-def get_prestamos_del_socio(socio_id: int, activos: Optional[bool] = None, session: Session = Depends(get_session)):
-    return prestamo_service.listar_prestamos(session, socio_id, activos)
+
+@router.put("/{socio_id}", response_model=SocioRespuesta, dependencies=[puede_administrar])
+@protected
+def update_socio(socio_id: int, datos: SocioBase, service: SocioServiceDep):
+    return service.update_socio(socio_id, datos)
+
+
+@router.delete("/{socio_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[puede_administrar])
+@protected
+def delete_socio(socio_id: int, service: SocioServiceDep):
+    service.delete_socio(socio_id)
+
+
+@router.get("/{socio_id}/prestamos", response_model=list[PrestamoRespuesta])
+@protected
+def get_prestamos_del_socio(
+    socio_id: int,
+    me: CurrentUserDep,
+    service: PrestamoServiceDep,
+    activos: Optional[bool] = None,
+):
+    # El bibliotecario ve los préstamos de cualquiera; un socio, solo los suyos
+    if not tiene_permiso(me, "ver_todos_los_prestamos"):
+        es_el_propio = tiene_permiso(me, "ver_prestamos_propios") and me.socio_id == socio_id
+        if not es_el_propio:
+            raise HTTPException(status_code=403, detail="Solo podés ver tus propios préstamos.")
+
+    return service.listar_prestamos(socio_id, activos)

@@ -1,49 +1,48 @@
-from fastapi import APIRouter, HTTPException, Depends, status
-from sqlmodel import Session, select
-from database import get_session
+from typing import Annotated
 
-from models.autor import Autor
+from fastapi import APIRouter, Depends, Query, status
+from fastapi.security import HTTPBearer
 
-router = APIRouter(prefix="/autores", tags=["Autores"])
+from dependencies import AutorServiceDep, permission_check
+from middlewares.protected import protected
+from models.autor import AutorBase
+from schemas.autor import AutorRespuesta
 
-@router.post("/", response_model=Autor, status_code=status.HTTP_201_CREATED)
-def create_autor(autor: Autor, session: Session = Depends(get_session)):
-    session.add(autor)
-    session.commit()
-    session.refresh(autor)
-    return autor
+router = APIRouter(prefix="/autores", tags=["Autores"], dependencies=[Depends(HTTPBearer())])
 
-@router.get("/", response_model=list[Autor])
-def get_autores(session: Session = Depends(get_session)):
-    return session.exec(select(Autor)).all()
+puede_leer = Depends(permission_check("leer_catalogo"))
+puede_escribir = Depends(permission_check("escribir_catalogo"))
 
-@router.get("/{autor_id}", response_model=Autor)
-def get_autor(autor_id: int, session: Session = Depends(get_session)):
-    autor = session.get(Autor, autor_id)
-    if not autor:
-        raise HTTPException(status_code=404, detail="Autor no encontrado.")
-    return autor
 
-@router.put("/{autor_id}", response_model=Autor)
-def update_autor(autor_id: int, autor_data: Autor, session: Session = Depends(get_session)):
-    autor_db = session.get(Autor, autor_id)
-    if not autor_db:
-        raise HTTPException(status_code=404, detail="Autor no encontrado.")
+@router.post("", response_model=AutorRespuesta, status_code=status.HTTP_201_CREATED, dependencies=[puede_escribir])
+@protected
+def create_autor(datos: AutorBase, service: AutorServiceDep):
+    return service.create_autor(datos)
 
-    autor_db.nombre = autor_data.nombre
-    autor_db.nacionalidad = autor_data.nacionalidad
 
-    session.add(autor_db)
-    session.commit()
-    session.refresh(autor_db)
-    return autor_db
+@router.get("", response_model=list[AutorRespuesta], dependencies=[puede_leer])
+@protected
+def get_autores(
+    service: AutorServiceDep,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 100,
+):
+    return service.get_autores(offset, limit)
 
-@router.delete("/{autor_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_autor(autor_id: int, session: Session = Depends(get_session)):
-    autor_db = session.get(Autor, autor_id)
-    if not autor_db:
-        raise HTTPException(status_code=404, detail="Autor no encontrado.")
-    
-    session.delete(autor_db)
-    session.commit()
-    return
+
+@router.get("/{autor_id}", response_model=AutorRespuesta, dependencies=[puede_leer])
+@protected
+def get_autor(autor_id: int, service: AutorServiceDep):
+    return service.get_autor(autor_id)
+
+
+@router.put("/{autor_id}", response_model=AutorRespuesta, dependencies=[puede_escribir])
+@protected
+def update_autor(autor_id: int, datos: AutorBase, service: AutorServiceDep):
+    return service.update_autor(autor_id, datos)
+
+
+@router.delete("/{autor_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[puede_escribir])
+@protected
+def delete_autor(autor_id: int, service: AutorServiceDep):
+    service.delete_autor(autor_id)

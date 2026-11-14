@@ -1,22 +1,24 @@
-from fastapi import APIRouter, Depends, Body, status
-from sqlmodel import Session
-from database import get_session
+from fastapi import APIRouter, Depends, status
+from fastapi.security import HTTPBearer
 
-from services import prestamo as prestamo_service
+from dependencies import PrestamoServiceDep, permission_check
+from middlewares.protected import protected
+from schemas.prestamo import PrestamoCrear, PrestamoRespuesta
 
-router = APIRouter(prefix="/prestamos", tags=["Prestamos"])
+router = APIRouter(
+    prefix="/prestamos",
+    tags=["Prestamos"],
+    dependencies=[Depends(HTTPBearer()), Depends(permission_check("administrar_prestamos"))],
+)
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-def crear_prestamo(
-    socio_id: int = Body(),
-    libro_id: int = Body(),
-    session: Session = Depends(get_session)
-):
-    return prestamo_service.crear_prestamo(session, socio_id, libro_id)
 
-@router.post("/{prestamo_id}/devolucion")
-def devolver_prestamo(
-    prestamo_id: int,
-    session: Session = Depends(get_session)
-):
-    return prestamo_service.devolver_prestamo(session, prestamo_id)
+@router.post("", response_model=PrestamoRespuesta, status_code=status.HTTP_201_CREATED)
+@protected
+def crear_prestamo(datos: PrestamoCrear, service: PrestamoServiceDep):
+    return service.crear_prestamo(datos.socio_id, datos.libro_id)
+
+
+@router.post("/{prestamo_id}/devolucion", response_model=PrestamoRespuesta)
+@protected
+def devolver_prestamo(prestamo_id: int, service: PrestamoServiceDep):
+    return service.devolver_prestamo(prestamo_id)

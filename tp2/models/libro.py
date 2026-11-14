@@ -7,12 +7,16 @@ if TYPE_CHECKING:
     from models.autor import Autor
     from models.prestamo import Prestamo
 
-class Libro(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+
+class LibroBase(SQLModel):
     titulo: str
     isbn: str = Field(unique=True, index=True)
-    stock: int = Field(default=0, ge=0)
+    stock: int = Field(default=0, ge=0)  # en la clase Base sí se valida: stock negativo => 422
     anio: int
 
-    autores: List["Autor"] = Relationship(back_populates="libros", link_model=LibroAutor)   
+
+class Libro(LibroBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    autores: List["Autor"] = Relationship(back_populates="libros", link_model=LibroAutor)
     prestamos: List["Prestamo"] = Relationship(back_populates="libro")
