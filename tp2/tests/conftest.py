@@ -26,6 +26,7 @@ def session():
     with Session(engine) as session:
         seed_roles_y_permisos(session)  # los roles y permisos tienen que existir en cada test
         yield session
+    engine.dispose()  # cierra la base de datos en memoria al terminar los tests
 
 
 def crear_cuenta(session, email, rol, socio_id=None, password="clave123"):
@@ -77,3 +78,4 @@ def libro(client):
         "/libros", json={"titulo": "Ficciones", "isbn": "111", "stock": 5, "anio": 1944}
     )
     return respuesta.json()
+
