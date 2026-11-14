@@ -1,60 +1,118 @@
-#TP1: ABM de Usuarios con FastAPI + ABM propio
+# TP1 - API REST con FastAPI (Usuarios y Personajes)
 
-Clase para aprender **FastAPI** y **Pydantic**.
+API REST desarrollada con **FastAPI** y **Pydantic** como extensión de la primera clase práctica. Gestiona dos recursos en memoria: **usuarios** (`/user`) y **personajes** (`/personaje`), con soporte para operaciones CRUD, filtros por parámetros de consulta y manejo de errores HTTP.
 
-## Crear el entorno virtual (venv)
+## Estructura
 
-Desde esta carpeta (`clase-fastapi`):
-
-```bash
-python3 -m venv .venv
+```
+TP1/
+└── clase-fastapi/
+    ├── main.py              # instancia la app de FastAPI y registra los routers
+    ├── models/              # modelos Pydantic de entrada y esquemas de respuesta
+    │   ├── users.py
+    │   └── personajes.py
+    ├── routers/             # endpoints y lógica de manejo en memoria
+    │   ├── users.py
+    │   └── personajes.py
+    └── requirements.txt     # dependencias del proyecto
 ```
 
-Activar el entorno virtual:
+## Cómo correrlo
 
-```bash
-# macOS / Linux
-source .venv/bin/activate
+Todos los comandos se ejecutan **desde la carpeta `TP1/clase-fastapi`**.
 
+Crear y activar el entorno virtual:
+
+```powershell
 # Windows (PowerShell)
+py -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-## Instalar los requerimientos
+```bash
+# macOS / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-Con el entorno virtual activado:
+Instalar las dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Ejecutar la aplicación
+Levantar el servidor de desarrollo:
 
 ```bash
 fastapi dev main.py
 ```
 
-La API quedará disponible en `http://127.0.0.1:8000` y la documentación interactiva en `http://127.0.0.1:8000/docs`.
+La API queda disponible en `http://127.0.0.1:8000` y la documentación interactiva (Swagger UI) en `http://127.0.0.1:8000/docs`.
 
-## Lint y chequeo de tipos
+## Persistencia y datos iniciales
 
-El proyecto incluye configuración local para dos herramientas:
+Los datos se almacenan **en memoria** mediante listas de Python (se reinician cada vez que se vuelve a levantar el servidor):
 
-- **[`setup.cfg`](./setup.cfg)**: configuración de [`pycodestyle`](https://pycodestyle.pycqa.org/) (chequeo de estilo PEP 8). Define `max-line-length = 79` y excluye `.venv` y `__pycache__` del análisis.
-- **[`pyrightconfig.json`](./pyrightconfig.json)**: configuración de [`pyright`](https://microsoft.github.io/pyright/) (chequeo de tipos). Apunta al entorno virtual local (`.venv`) para resolver las dependencias instaladas y excluye `.venv` y `__pycache__`.
+* **Usuarios (`usuarios`):**
+  * `id: 1`, `name: "juan perez"`, `is_active: true`
+  * `id: 2`, `name: "pepe sanchez"`, `is_active: false`
+* **Personajes (`personajes_db`):**
+  * `id: 1`, `nombre: "Gimli"`, `raza: "Enano"`, `clase: "Guerrero"`, `nivel: 3`
 
-`pyright` ya está incluido en `requirements.txt`. `pycodestyle` no, así que hay que instalarlo aparte.
+## Endpoints
 
-Con el entorno virtual activado, correr:
+### General
 
-```bash
-pip install pycodestyle
-python -m pycodestyle .
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/` | Mensaje de bienvenida de la API |
+
+### Usuarios (`/user`)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/user` | Lista todos los usuarios. Acepta filtro opcional `?is_active=true` o `?is_active=false` |
+| POST | `/user` | Crea un nuevo usuario (`id`, `name`, `is_active` opcional con valor `true` por defecto) |
+| PUT | `/user/{id}` | Actualiza los datos de un usuario existente manteniendo su `id` (`404` si no existe) |
+| DELETE | `/user/{id}` | Elimina un usuario por su `id` (`404` si no existe) |
+
+Ejemplo de cuerpo para `POST /user` o `PUT /user/{id}`:
+
+```json
+{
+  "id": 3,
+  "name": "ana gomez",
+  "is_active": true
+}
 ```
 
-```bash
-pyright
+### Personajes (`/personaje`)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/personaje` | Lista todos los personajes. Acepta filtro opcional `?clase=<nombre>` (insensible a mayúsculas/minúsculas) |
+| GET | `/personaje/{id}` | Obtiene un personaje por su `id` (`404` si no existe) |
+| POST | `/personaje` | Crea un nuevo personaje (`id`, `nombre`, `raza`, `clase`, `nivel`) |
+| PUT | `/personaje/{id}` | Actualiza un personaje existente manteniendo su `id` (`404` si no existe) |
+| DELETE | `/personaje/{id}` | Elimina un personaje por su `id` (`404` si no existe) |
+
+Ejemplo de cuerpo para `POST /personaje` o `PUT /personaje/{id}`:
+
+```json
+{
+  "id": 2,
+  "nombre": "Legolas",
+  "raza": "Elfo",
+  "clase": "Arquero",
+  "nivel": 4
+}
 ```
+
+## Validaciones y manejo de errores
+
+* **Validación de tipos (`422 Unprocessable Entity`):** FastAPI y Pydantic validan automáticamente que los campos enviados en el body o en la ruta coincidan con los tipos esperados.
+* **Recurso no encontrado (`404 Not Found`):** los endpoints `PUT /user/{id}`, `DELETE /user/{id}`, `GET /personaje/{id}`, `PUT /personaje/{id}` y `DELETE /personaje/{id}` devuelven `404` cuando el `id` solicitado no existe.
+* **Consistencia de ID en actualizaciones:** en `PUT /user/{id}` y `PUT /personaje/{id}`, se asigna el `id` de la ruta sobre el objeto recibido antes de guardarlo para evitar inconsistencias.
 
 # TP2 - Sistema de Biblioteca (FastAPI + SQLModel)
 
